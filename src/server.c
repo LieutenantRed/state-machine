@@ -89,15 +89,13 @@ int main(int argc, char** argv) {
 			handle_error("invalid address"); 
 
 		listen(sockd, CLIENTS);
-		fprintf(stderr, "Start listening");
-		
+				
 		while (1) {
 			int new_connect = accept(sockd, NULL, NULL);
 			if (new_connect == -1) {
-				fprintf(stderr, "WARNING: lost connection");	
+				fprintf(stderr, "WARNING: lost connection\n");	
 				break;
 			}
-			fprintf(stderr, "Connect accepted");
 			msg.type = TCP_REQUEST;
 			memcpy(&msg.data, &new_connect, sizeof(new_connect));
 			msgsnd(msgid, &msg, sizeof(msg), 0);
