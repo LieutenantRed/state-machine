@@ -12,7 +12,7 @@ void into_orcish(char* src) {
 		src[len - 2] = '!';
 		src[len - 1] = '\n';
 	} else {
-		memset(src, 0, BUF_SIZE);
+		memset(src, 0, BUFFER_SIZE);
 		strcpy(src, "Unknown pattern\n");
 	}		 
 }

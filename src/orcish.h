@@ -3,7 +3,7 @@
 
 #include <string.h>
 
-#define BUF_SIZE 1024
+#define BUFFER_SIZE 1024
 
 void into_orcish(char* src);
 
