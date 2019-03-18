@@ -15,11 +15,11 @@
 #include "orcish.h"
 #include "routine.h"
 
-#ifndef BUF_SIZE
-#define BUF_SIZE 120
+#ifndef BUFFER_SIZE
+#define BUFFER_SIZE 120
 #endif
 
-#define CLIENTS 10
+#define CLIENTS 1
 
 int main(int argc, char** argv) {
 	struct sockaddr_in host_addr;
@@ -45,6 +45,7 @@ int main(int argc, char** argv) {
 				protocol = tcp;
 			if (strcmp(optarg, "udp") == 0)
 				protocol = udp;	
+			break;
 		}
 		default: {
 			printf("Usage: %s -a [ip address] -p [port] -t [tcp/udp]\n", argv[0]);
@@ -54,7 +55,7 @@ int main(int argc, char** argv) {
 	}
 
 	if ((host_addr.sin_port == 0) || (host_addr.sin_addr.s_addr == 0)) {
-		printf("Usage: %s -a [ip address] -p [port]\n", argv[0]);
+		printf("Usage: %s -a [ip address] -p [port] -t [tcp/udp]\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
@@ -62,10 +63,6 @@ int main(int argc, char** argv) {
 	int msgid = msgget(IPC_PRIVATE, 0666);
 	if (msgid == -1)
 		handle_error("cannot create msgque");
-	
-	struct udpthread_routine_info info;
-	info.sockd = sockd;
-	info.msgid = msgid;
 
 	/*start routines*/
 	 //will be filled later, will be used after routine rec msg from que
@@ -76,7 +73,7 @@ int main(int argc, char** argv) {
 	}
 
 	struct msg_type msg;
-	memset(&msg_snd, 0, sizeof(msg_snd));
+	memset(&msg, 0, sizeof(msg));
 	int sockd;
 	switch(protocol) {
 	case tcp: {
@@ -92,16 +89,18 @@ int main(int argc, char** argv) {
 			handle_error("invalid address"); 
 
 		listen(sockd, CLIENTS);
+		fprintf(stderr, "Start listening");
 		
 		while (1) {
-			int new_connect = accept(sockd, NULL, NULL)
+			int new_connect = accept(sockd, NULL, NULL);
 			if (new_connect == -1) {
-				fprintf("WARNING: lost connection");	
+				fprintf(stderr, "WARNING: lost connection");	
 				break;
 			}
+			fprintf(stderr, "Connect accepted");
 			msg.type = TCP_REQUEST;
 			memcpy(&msg.data, &new_connect, sizeof(new_connect));
-			msgsnd(msgid, &msg, BUF_SIZE + sizeof(long), 0);
+			msgsnd(msgid, &msg, sizeof(msg), 0);
 		}
 	}
 	case udp: {
@@ -118,22 +117,33 @@ int main(int argc, char** argv) {
 		if (bind(sockd, (struct sockaddr*)&host_addr, sizeof(host_addr)) == -1)
 			handle_error("invalid address"); 
 
-		int sockadr_l = sizeof(host_addr);
-
 		while(1) {
-			msg.type = UDP_REQUEST;
-			memcpy(&msg.data, &sockd, sizeof(sockd));
+			int* sock_p = (int*)&msg.data;
+			struct sockaddr_in* peer_p = (struct sockaddr_in*)((char*)(&msg.data) + sizeof(int));
+			char* buffer_p = (char*)((char*)&msg.data + sizeof(int) + sizeof(struct sockaddr_in));
+
+			struct sockaddr_in peer;
+			int sockadr_l = sizeof(struct sockaddr_in);
+			char buffer_in[BUFFER_SIZE];
+			memset(buffer_in, 0, BUFFER_SIZE);
 
 			recvfrom (
 				sockd, 
-				// data placed after sockaddr struct and socket descriptor 
-				&msg.data + sockadr_l + sieof(sockd), 
-				BUF_SIZE, 
+				buffer_in, 
+				BUFFER_SIZE, 
 				0, 
-				(struct sockaddr*)(&(msg.data) + sizeof(sockd)), 
+				(struct sockaddr*)&peer, 
 				(socklen_t*)&sockadr_l
 			);
-			msgsnd(msgid, &msg, BUF_SIZE + sizeof(long), 0);
+			long udp = UDP_REQUEST;
+			
+			memcpy(&msg.type, &udp, sizeof(long));
+			memcpy(sock_p, &sockd, sizeof(sockd));
+			memcpy(peer_p, &peer, sizeof(peer));
+			memcpy(buffer_p, &buffer_in, BUFFER_SIZE - sizeof(peer) - sizeof(sockd));
+
+			if (msgsnd(msgid, &msg, BUFFER_SIZE + sizeof(long), 0) != 0)
+				handle_error("msg send");
 			memset(&msg, 0, sizeof(msg));
 		}
 
