@@ -34,6 +34,13 @@ typedef struct msg_type{
 } msg_type;
 
 typedef enum {tcp, udp} proto_t;
+typedef enum {
+	WAIT_QUEUE, 
+	MSG_RCV,
+	WORK,
+	SEND,
+	WAIT_CLIENT
+} state_t;
 
 void * serve_forever(void* args);
 
