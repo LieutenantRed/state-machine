@@ -44,6 +44,4 @@ typedef enum {
 
 void * serve_forever(void* args);
 
-static void routine(void* args);
-
 #endif
