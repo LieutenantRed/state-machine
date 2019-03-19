@@ -1,7 +1,7 @@
 #include "routine.h"
 
 void * serve_forever(void* args) {
-	state_t STATE;
+	state_t STATE = WAIT_QUEUE;
 
 	struct msg_type msg;
 	struct sockaddr_in peer;
